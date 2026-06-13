@@ -1,6 +1,6 @@
 // CẤU HÌNH API KẾT NỐI VỚI GOOGLE SHEETS
 const API_URL =
-  "https://script.google.com/macros/s/AKfycby5FSomcC3sDICd2WYmz6mDVT3p6kdgoDvECo22DzrWDNdeTpphfDDMA_LYjEXD5n-z/exec";
+  "https://script.google.com/macros/s/AKfycbyLGDnboy-_fFG1TxYl4tzgxO6QAIHhvSazFASL7NQvsC6pFeAluBSK26YE1LdrQONMhQ/exec";
 
 // Hàm gọi API chuẩn hóa để dùng cho mọi request
 async function callGoogleAPI(action, payload) {
