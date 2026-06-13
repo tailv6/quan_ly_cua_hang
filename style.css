@@ -1,0 +1,52 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #0f172a;
+}
+
+.bg-viettel {
+    background-color: #ee0033;
+}
+
+.text-viettel {
+    color: #ee0033;
+}
+
+.table-container::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
+#main-app {
+    display: none;
+    background-color: #f1f5f9;
+    min-height: 100vh;
+}
+
+.input-focus:focus {
+    border-color: #ee0033;
+    box-shadow: 0 0 0 3px rgba(238, 0, 51, 0.1);
+}
+
+/* CSS cho đơn hàng đã bị xóa/gạch bỏ */
+.row-deleted td,
+.row-deleted div,
+.row-deleted span {
+    text-decoration: line-through !important;
+    color: #94a3b8 !important;
+    /* Màu xám mờ */
+    background: transparent !important;
+}
+
+.row-deleted {
+    opacity: 0.6;
+    background-color: #f8fafc !important;
+    pointer-events: none;
+    /* Vô hiệu hóa click */
+}
