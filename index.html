@@ -269,6 +269,9 @@
     </div>
 
     <script>
+        // CẤU HÌNH API KẾT NỐI VỚI GOOGLE SHEETS
+        const API_URL = "https://script.google.com/macros/s/AKfycby5FSomcC3sDICd2WYmz6mDVT3p6kdgoDvECo22DzrWDNdeTpphfDDMA_LYjEXD5n-z/exec";
+
         let CURRENT_STAFF = "";
         let blockCounter = 0;
 
@@ -293,6 +296,24 @@
             ]
         };
 
+        // Hàm gọi API chuẩn hóa để dùng cho mọi request
+        async function callGoogleAPI(action, payload) {
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: action, ...payload }),
+                    // Headers thiết lập dạng plain text để tránh bị trình duyệt chặn CORS preflight
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+                });
+                const result = await response.json();
+                if (result.status === "error") throw new Error(result.message);
+                return result.data;
+            } catch (error) {
+                console.error("Lỗi gọi API:", error);
+                throw error;
+            }
+        }
+
         window.onload = function () {
             const savedUser = localStorage.getItem('currentUser');
             if (savedUser) {
@@ -302,7 +323,8 @@
             }
         };
 
-        function doLogin() {
+        // Đã cập nhật thành Async/Await để gọi API
+        async function doLogin() {
             const inputId = document.getElementById('staff-id').value.trim().toUpperCase();
             const pass = document.getElementById('password').value;
 
@@ -314,19 +336,20 @@
             btn.disabled = true;
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Đang xác thực...';
 
-            if (typeof google !== 'undefined' && google.script) {
-                google.script.run.withSuccessHandler((res) => {
-                    btn.disabled = false;
-                    btn.innerHTML = originalText;
-                    if (res.success) {
-                        localStorage.setItem('currentUser', res.staffId);
-                        showMainApp(res.staffId);
-                    } else {
-                        alert(res.message);
-                    }
-                }).checkLogin(inputId, pass);
-            } else {
-                alert("Lỗi: Không thể kết nối với Máy chủ Google Sheets.");
+            try {
+                const res = await callGoogleAPI('checkLogin', { staffId: inputId, pass: pass });
+
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+
+                if (res.success) {
+                    localStorage.setItem('currentUser', res.staffId);
+                    showMainApp(res.staffId);
+                } else {
+                    alert(res.message);
+                }
+            } catch (error) {
+                alert("Lỗi kết nối đến máy chủ. Vui lòng thử lại!");
                 btn.disabled = false;
                 btn.innerHTML = originalText;
             }
@@ -349,14 +372,16 @@
             loadHistoryFromServer(staffId);
         }
 
-        function loadHistoryFromServer(staffId) {
+        // Đã cập nhật thành Async/Await để tải lịch sử
+        async function loadHistoryFromServer(staffId) {
             const tbody = document.getElementById("history-table");
             tbody.innerHTML = '<tr><td colspan="7" class="p-16 text-center text-slate-400"><i class="fa-solid fa-spinner fa-spin text-4xl mb-3"></i><br>Đang tải dữ liệu ca làm việc...</td></tr>';
 
-            if (typeof google !== 'undefined' && google.script) {
-                google.script.run.withSuccessHandler((historyData) => {
-                    renderHistoryData(historyData);
-                }).getRecentHistory(staffId);
+            try {
+                const historyData = await callGoogleAPI('getRecentHistory', { staffId: staffId });
+                renderHistoryData(historyData);
+            } catch (error) {
+                tbody.innerHTML = '<tr><td colspan="7" class="p-16 text-center text-red-500">Lỗi tải dữ liệu. Vui lòng tải lại trang.</td></tr>';
             }
         }
 
@@ -504,7 +529,8 @@
             }
         }
 
-        function sendDataToSheets() {
+        // Đã cập nhật thành Async/Await cho quá trình lưu dữ liệu
+        async function sendDataToSheets() {
             const phone = document.getElementById('phone').value.trim();
             const phoneRegex = /^0\d{9}$/;
             if (!phoneRegex.test(phone)) return alert("Số điện thoại không hợp lệ!\nVui lòng nhập đúng 10 số, bắt đầu bằng số 0.");
@@ -529,8 +555,6 @@
             submitBtn.classList.add("opacity-70", "cursor-not-allowed");
             submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> ĐANG GHI NHẬN...';
 
-            let completed = 0;
-            let totalToUpload = blocks.length;
             let dataToUpload = [];
             const orderId = Date.now().toString();
 
@@ -557,17 +581,23 @@
                 dataToUpload.push(packageData);
             });
 
-            dataToUpload.forEach(dataObj => {
-                if (typeof google !== 'undefined' && google.script) {
-                    google.script.run.withSuccessHandler((rowInserted) => {
-                        completed++;
-                        if (completed === totalToUpload) {
-                            addOrderToTable(dataToUpload, orderId, false);
-                            finishSubmit(submitBtn, originalText);
-                        }
-                    }).addData(dataObj);
+            let completed = 0;
+            let totalToUpload = blocks.length;
+
+            for (let dataObj of dataToUpload) {
+                try {
+                    await callGoogleAPI('addData', { dataObj: dataObj });
+                    completed++;
+                    if (completed === totalToUpload) {
+                        addOrderToTable(dataToUpload, orderId, false);
+                        finishSubmit(submitBtn, originalText);
+                    }
+                } catch (error) {
+                    alert("Có lỗi khi ghi nhận dữ liệu: " + error.message);
+                    finishSubmit(submitBtn, originalText);
+                    break;
                 }
-            });
+            }
         }
 
         function finishSubmit(btn, originalText) {
@@ -616,7 +646,6 @@
                 else if (data.network === "MOBIFONE") networkColorClass = "text-blue-800";
                 else if (data.network === "VIETNAMOBILE") networkColorClass = "text-orange-500";
 
-                // Logic mới xử lý dòng đã xóa
                 const isDeleted = orderArray[0].isDeleted;
                 const trClasses = isDeleted
                     ? `order-row-${orderId} row-deleted`
@@ -661,12 +690,12 @@
             tbody.insertAdjacentHTML('afterbegin', html);
         }
 
-        function handleDeleteOrder(orderId) {
+        // Đã cập nhật thành Async/Await cho quá trình xóa dữ liệu
+        async function handleDeleteOrder(orderId) {
             if (!confirm("Xác nhận hủy TOÀN BỘ đơn hàng này trên Google Sheets?")) return;
 
             const rows = document.querySelectorAll(`.order-row-${orderId}`);
 
-            // Đổi UI sang trạng thái chờ
             rows.forEach(row => {
                 row.classList.add("row-deleted");
                 const btn = row.querySelector('button');
@@ -676,24 +705,21 @@
                 }
             });
 
-            if (typeof google !== 'undefined' && google.script) {
-                google.script.run.withSuccessHandler((success) => {
-                    if (success) {
-                        rows.forEach(row => {
-                            const btn = row.querySelector('.fa-spinner');
-                            if (btn) btn.parentElement.innerHTML = '<i class="fa-solid fa-ban text-slate-400"></i>';
-                        });
-                    } else {
-                        alert("Có lỗi xảy ra, không thể gạch ngang dữ liệu trên trang tính!");
-                    }
-                }).deleteOrderInSheet(orderId);
-            } else {
-                setTimeout(() => {
+            try {
+                const success = await callGoogleAPI('deleteOrderInSheet', { orderId: orderId });
+                if (success) {
                     rows.forEach(row => {
                         const btn = row.querySelector('.fa-spinner');
                         if (btn) btn.parentElement.innerHTML = '<i class="fa-solid fa-ban text-slate-400"></i>';
                     });
-                }, 600);
+                } else {
+                    alert("Có lỗi xảy ra, không thể gạch ngang dữ liệu trên trang tính!");
+                }
+            } catch (error) {
+                alert("Có lỗi kết nối khi xóa dữ liệu!");
             }
         }
     </script>
+</body>
+
+</html>
