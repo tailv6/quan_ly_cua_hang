@@ -340,20 +340,30 @@ function addOrderToTable(orderArray, orderId, isFromServer = false) {
     const tbody = document.getElementById("history-table");
     if (tbody.querySelector('.empty-msg')) tbody.innerHTML = "";
 
-    const now = new Date();
-    const dd = String(now.getDate()).padStart(2, '0');
-    const mm = String(now.getMonth() + 1).padStart(2, '0');
-    const yyyy = now.getFullYear();
-    const hh = String(now.getHours()).padStart(2, '0');
-    const min = String(now.getMinutes()).padStart(2, '0');
-    const currentGeneratedTime = `${dd}/${mm}/${yyyy} ${hh}:${min}`;
+    let timeDisplay = "";
+    let rawTimeStr = (isFromServer && orderArray[0].timeStr) ? orderArray[0].timeStr : null;
 
-    let rawTimeStr = (isFromServer && orderArray[0].timeStr) ? orderArray[0].timeStr : currentGeneratedTime;
+    // Chuyển đổi chuỗi thời gian từ Server hoặc lấy thời gian hiện tại
+    let dateObj = rawTimeStr ? new Date(rawTimeStr) : new Date();
 
-    let timeDisplay = rawTimeStr;
-    if (rawTimeStr.includes(" ")) {
-        let tParts = rawTimeStr.split(" ");
-        timeDisplay = `<div class="font-bold text-slate-700">${tParts[0]}</div><div class="text-[10px] text-slate-400 mt-1"><i class="fa-regular fa-clock"></i> ${tParts[1]}</div>`;
+    // Kiểm tra xem đối tượng Date có hợp lệ không (convert thành công)
+    if (!isNaN(dateObj.getTime())) {
+        const dd = String(dateObj.getDate()).padStart(2, '0');
+        const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const yyyy = dateObj.getFullYear();
+        const hh = String(dateObj.getHours()).padStart(2, '0');
+        const min = String(dateObj.getMinutes()).padStart(2, '0');
+
+        // Định dạng lại theo đúng HTML mong muốn
+        timeDisplay = `<div class="font-bold text-slate-700">${dd}/${mm}/${yyyy}</div><div class="text-[10px] text-slate-400 mt-1"><i class="fa-regular fa-clock"></i> ${hh}:${min}</div>`;
+    } else {
+        // Fallback dự phòng nếu dữ liệu trên Sheets đang lưu dạng text cũ "DD/MM/YYYY HH:MM"
+        if (rawTimeStr && rawTimeStr.includes(" ")) {
+            let tParts = rawTimeStr.split(" ");
+            timeDisplay = `<div class="font-bold text-slate-700">${tParts[0]}</div><div class="text-[10px] text-slate-400 mt-1"><i class="fa-regular fa-clock"></i> ${tParts[1]}</div>`;
+        } else {
+            timeDisplay = rawTimeStr; // Hiển thị nguyên gốc nếu không nhận diện được
+        }
     }
 
     let html = "";
