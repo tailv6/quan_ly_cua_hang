@@ -40,12 +40,20 @@ const CONFIG_SERVICES = {
       required: false,
     },
   ],
+  // Thay thế đoạn cấu hình "NẠP TIỀN DI ĐỘNG" cũ bằng đoạn này:
   "NẠP TIỀN DI ĐỘNG": [
     {
       sheetCol: "gia_tien",
       label: "Số tiền nạp",
       type: "text",
       placeholder: "VD: 100.000",
+      isCurrency: true,
+    },
+    {
+      sheetCol: "thuc_tra", // Thêm trường Thực trả
+      label: "Thực trả",
+      type: "text",
+      placeholder: "VD: 95.000",
       isCurrency: true,
     },
     {
@@ -614,27 +622,50 @@ function autoCalculateProfit() {
 
   let profit = 0; // Mặc định lợi nhuận = 0
 
-  // 2. Kiểm tra khối dịch vụ đầu tiên
-  const firstBlock = document.querySelector(".service-block");
-  if (firstBlock) {
-    const serviceName = firstBlock.querySelector(".service-select").value;
-    const maGioiThieuInput = firstBlock.querySelector(
-      'input[data-col="ma_gioi_thieu"]',
-    );
+  // Chỉ tính toán Lợi nhuận tạm tính nếu Giá thu khách đã được nhập (> 0)
+  if (giaThu > 0) {
+    const firstBlock = document.querySelector(".service-block");
+    if (firstBlock) {
+      const serviceName = firstBlock.querySelector(".service-select").value;
 
-    // 3. Kiểm tra điều kiện: Tên dịch vụ & Mã giới thiệu
-    if (serviceName === "CHUẨN HÓA, XÁC THỰC TTTB" && maGioiThieuInput) {
-      const maGioiThieu = maGioiThieuInput.value.trim().toUpperCase(); // Tự động viết hoa để so sánh
+      // ĐIỀU KIỆN 1: CHUẨN HÓA, XÁC THỰC TTTB
+      if (serviceName === "CHUẨN HÓA, XÁC THỰC TTTB") {
+        const maGioiThieuInput = firstBlock.querySelector(
+          'input[data-col="ma_gioi_thieu"]',
+        );
+        if (maGioiThieuInput) {
+          const maGioiThieu = maGioiThieuInput.value.trim().toUpperCase(); // Tự động viết hoa để so sánh
+          if (maGioiThieu === "LIENNTP_HNI_CNKD") {
+            profit = giaThu + 10000;
+          }
+        }
+      }
 
-      if (maGioiThieu === "LIENNTP_HNI_CNKD") {
-        profit = giaThu + 10000;
+      // ĐIỀU KIỆN 2: NẠP TIỀN DI ĐỘNG
+      else if (serviceName === "NẠP TIỀN DI ĐỘNG") {
+        const thucTraInput = firstBlock.querySelector(
+          'input[data-col="thuc_tra"]',
+        );
+        if (thucTraInput) {
+          let thucTra = Number(thucTraInput.value.replace(/\D/g, "")) || 0;
+          // Lợi nhuận = Giá thu khách - Thực trả
+          profit = giaThu - thucTra;
+        }
+      }
+
+      // ĐIỀU KIỆN 3 & 4: ĐĂNG KÝ GÓI CƯỚC DI ĐỘNG & BÁN SIM
+      else if (
+        serviceName === "ĐĂNG KÝ GÓI CƯỚC DI ĐỘNG" ||
+        serviceName === "BÁN SIM"
+      ) {
+        profit = 0;
       }
     }
-    // Lưu ý: Nếu bạn có công thức cho các dịch vụ khác (như BÁN SIM), bạn có thể dùng lệnh "else if" ở đây.
   }
 
-  // 4. Cập nhật giao diện và giá trị ẩn
+  // Cập nhật giao diện và giá trị ẩn
+  // Lợi nhuận có thể bị âm (ví dụ Thực trả > Giá thu khách), nên ta format chuỗi kể cả số âm
   document.getElementById("profit-display").innerText =
-    profit > 0 ? profit.toLocaleString("vi-VN") : "0";
+    profit !== 0 ? profit.toLocaleString("vi-VN") : "0";
   document.getElementById("profit").value = profit;
 }
